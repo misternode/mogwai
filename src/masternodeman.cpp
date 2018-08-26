@@ -192,7 +192,21 @@ void CMasternodeMan::CheckAndRemove(CConnman& connman)
                 it->second.FlagGovernanceItemsAsDirty();
                 mapMasternodes.erase(it++);
                 fMasternodesRemoved = true;
-            } else {
+            }
+            // if last ping was too old
+            else if (GetTime() - it->second.lastPing.sigTime > PRUNE_NEW_START_REQUIRED_SECONDS) {
+                LogPrint("masternode", "CMasternodeMan::CheckAndRemove -- Removing Masternode: %s  addr=%s  %i now\n", it->second.GetStateString(), it->second.addr.ToString(), size() - 1);
+
+                // erase all of the broadcasts we've seen from this txin, ...
+                mapSeenMasternodeBroadcast.erase(hash);
+                mWeAskedForMasternodeListEntry.erase(it->first);
+
+                // and finally remove it from the list
+                it->second.FlagGovernanceItemsAsDirty();
+                mapMasternodes.erase(it++);
+                fMasternodesRemoved = true;
+            }
+            else {
                 bool fAsk = (nAskForMnbRecovery > 0) &&
                             masternodeSync.IsSynced() &&
                             it->second.IsNewStartRequired() &&
